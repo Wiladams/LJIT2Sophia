@@ -1,5 +1,7 @@
 local ffi = require("ffi")
 
+local Lib = ffi.load("./libsophia.so")
+
 ffi.cdef[[
 /*
  * sophia database
@@ -57,7 +59,8 @@ typedef struct {
 
 void *sp_env(void);
 void *sp_open(void*);
-int sp_ctl(void*, spopt, ...);
+//int sp_ctl(void*, spopt, ...);
+int sp_ctl(void*, spopt, int, const char *);
 int sp_destroy(void*);
 int sp_set(void*, const void*, size_t, const void*, size_t);
 int sp_delete(void*, const void*, size_t);
@@ -72,4 +75,21 @@ char *sp_error(void*);
 void sp_stat(void*, spstat*);
 ]]
 
+return {
+    sp_env = Lib.sp_env,
+    sp_open = Lib.sp_open,
+    sp_ctl = Lib.sp_ctl,
+    sp_destroy = Lib.sp_destroy,
+    sp_set = Lib.sp_set,
+    sp_delete = Lib.sp_delete,
+    sp_get = Lib.sp_delete,
+    sp_cursor = Lib.sp_cursor,
+    sp_fetch = Lib.sp_fetch,
+    sp_key = Lib.sp_key,
+    sp_keysize = Lib.sp_keysize,
+    sp_value = Lib.sp_value,
+    sp_valuesize = Lib.sp_valuesize,
+    sp_error = Lib.sp_error,
+    sp_stat = Lib.sp_stat,
+}
 
