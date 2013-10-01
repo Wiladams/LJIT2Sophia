@@ -10,6 +10,31 @@ typedef struct {
 } SophiaEnvHandle;
 ]]
 
+ffi.cdef[[
+typedef struct {
+    void * Handle;
+} SophiaDBHandle;
+]]
+local SophiaDBHandle = ffi.typeof("SophiaDBHandle");
+local SophiaDBHandle_mt = {
+    __new = function(ct, rawHandle)
+        print("SophiaDBHandle.__new(): ", rawHandle);
+        return ffi.new(ct, rawHandle);
+    end,
+
+    __gc = function(self)
+        if self.Handle == nil then
+            return ;
+        end
+
+        sophia_ffi.sp_destroy(self.Handle);
+
+        self.Handle = nil;
+    end,
+}
+ffi.metatype(SophiaDBHandle, SophiaDBHandle_mt);
+
+-- Safe Handle for sophia environment type
 local SophiaEnvHandle = ffi.typeof("SophiaEnvHandle");
 local SophiaEnvHandle_mt = {
     __gc = function(self)
@@ -42,7 +67,6 @@ SophiaEnvironment_mt = {
 }
 
 SophiaEnvironment.init = function(self, safeHandle)
-    print(".init");
 
     local obj = {
         Handle = safeHandle;
@@ -53,18 +77,14 @@ SophiaEnvironment.init = function(self, safeHandle)
 end
 
 SophiaEnvironment.create = function(self, directory)
+
     directory = directory or "./db"
     
     local envHandle = SophiaEnvHandle();
---print("envHandle: ", envHandle);
     if not envHandle then
         return nil;
     end
 
---print("               envHandle.Handle: ", envHandle.Handle);
---print("                    ffi.C.SPDIR: ", ffi.C.SPDIR);
---print("ffi.C.SPI_CREAT | ffi.C.SPO_RDWR: ", bor(ffi.C.SPO_CREAT,ffi.C.SPO_RDWR));
---print("                      directory: ", directory);
 
     local rc = sophia_ffi.sp_ctl(envHandle.Handle, ffi.C.SPDIR, 
 	ffi.cast("int32_t",bor(ffi.C.SPO_CREAT,ffi.C.SPO_RDWR)), 
@@ -84,34 +104,18 @@ end
 
 SophiaEnvironment.open = function(self)
     local dbhandle = sophia_ffi.sp_open(self:getNativeHandle());
+    
+
     if (dbhandle == nil) then
         return nil, sophia_ffi.sp_error(self:getNativeHandle());
     end
     
-    return SophiaDatabase(dbhandle);
+    return SophiaDBHandle(dbhandle);
 end
 
-ffi.cdef[[
-typedef struct {
-    void * Handle;
-} SophiaDBHandle;
-]]
 
-local SophiaDBHandle = ffi.typeof("SophiaDBHandle");
-local SophiaDBHandle_mt = {
-    __new = function(ct, ...)
-    end,
 
-    __gc = function(self)
-        if self.Handle == nil then
-            return ;
-        end
 
-        sophia_ffi.sp_destroy(self.Handle);
-
-        self.Handle = nil;
-    end,
-}
 
 local SophiaDatabase = {}
 setmetatable(SophiaDatabase, {
@@ -124,9 +128,10 @@ local SophiaDatabase_mt = {
     __index = SophiaDatabase;
 }
 
-SophiaDatabase.init = function(self, safeHandle)
+SophiaDatabase.init = function(self, env, dbhandle)
     local obj = {
-        self.Handle = safeHandle;
+        Environment = env;
+        DBHandle = dbhandle;
     }
 
     setmetatable(obj, SophiaDatabase_mt);
@@ -134,12 +139,60 @@ SophiaDatabase.init = function(self, safeHandle)
     return obj
 end
 
-SophiaDatabase.create = function(self, dbHandle)
-    return self:init(dbHandle);
+SophiaDatabase.create = function(self, dbname)
+    -- create the environment
+    local env, err = SophiaEnvironment(dbname);
+
+    if not env then
+        return nil, err;
+    end
+
+    -- open the database
+    local dbhandle, err = env:open();
+
+    if not dbhandle then
+        return nil, err
+    end
+
+    -- initialize the object
+    return self:init(env, dbhandle);
 end
 
 SophiaDatabase.getNativeHandle = function(self)
-    return self.Handle.Handle;
+    return self.DBHandle.Handle;
+end
+
+-- Database operations
+SophiaDatabase.set = function(self, key, keysize, value, valuesize)
+    local rc = sophia_ffi.sp_set(self:getNativeHandle(),
+        key, keysize,
+        value, valuesize);
+
+    if rc == -1 then
+        return false, sophia_ffi.sp_error(self:getNativeHandle());
+    end
+
+    return true
+end
+
+SophiaDatabase.get = function(self, key, keysize, value, valuesize)
+    --print(key, keysize, value, valuesize);
+    local rc = sophia_ffi.sp_get(self:getNativeHandle(), key, keysize, value, valuesize);
+
+    if rc == -1 then
+        return false, sophia_ffi.sp_error(self:getNativeHandle());
+    end
+
+    return true
+end
+
+SophiaDatabase.delete = function(self, key, keysize)
+    local rc = sophia_ffi.sp_delete(self:getNativeHandle(), key, keysize);
+    if rc == -1 then
+        return false, sophia_ffi.sp_error(self:getNativeHandle());
+    end
+   
+    return true
 end
 
 
