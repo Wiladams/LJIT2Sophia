@@ -59,8 +59,8 @@ typedef struct {
 
 void *sp_env(void);
 void *sp_open(void*);
-//int sp_ctl(void*, spopt, ...);
-int sp_ctl(void*, spopt, int, const char *);
+int sp_ctl(void*, spopt, ...);
+//int sp_ctl(void*, spopt, int, const char *);
 int sp_destroy(void*);
 int sp_set(void*, const void*, size_t, const void*, size_t);
 int sp_delete(void*, const void*, size_t);
