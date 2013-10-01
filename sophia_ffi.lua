@@ -1,6 +1,7 @@
 local ffi = require("ffi")
 
 local Lib = ffi.load("./libsophia.so")
+local pthread = ffi.load("pthread", true);
 
 ffi.cdef[[
 /*
