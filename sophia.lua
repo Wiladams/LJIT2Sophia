@@ -7,8 +7,28 @@ local sophia_ffi = require("sophia_ffi")
 ffi.cdef[[
 typedef struct {
     void * Handle;
-} SophiaEnvHandle;
+} SophiaHandle;
 ]]
+
+local SophiaHandle = ffi.typeof("SophiaHandle");
+local SophiaHandle_mt = {
+    __new = function(ct, rawHandle)
+        return ffi.new(ct, rawHandle);
+    end,
+
+    __gc = function(self)
+        if self.Handle == nil then
+            return ;
+        end
+
+        sophia_ffi.sp_destroy(self.Handle);
+
+        self.Handle = nil;
+    end,
+}
+ffi.metatype(SophiaHandle, SophiaHandle_mt);
+
+
 
 ffi.cdef[[
 typedef struct {
@@ -33,7 +53,12 @@ local SophiaDBHandle_mt = {
     end,
 }
 ffi.metatype(SophiaDBHandle, SophiaDBHandle_mt);
-
+--[=[
+ffi.cdef[[
+typedef struct {
+    void * Handle;
+} SophiaEnvHandle;
+]]
 -- Safe Handle for sophia environment type
 local SophiaEnvHandle = ffi.typeof("SophiaEnvHandle");
 local SophiaEnvHandle_mt = {
@@ -44,16 +69,13 @@ local SophiaEnvHandle_mt = {
         self.Handle = nil;
     end,
 
-    __new = function(ct, ...)
-        local env = sophia_ffi.sp_env();
-	if env == nil then
-            return nil;
-        end
+    __new = function(ct, rawHandle)
 
-	return ffi.new(ct, env);
+	return ffi.new(ct, rawHandle);
     end,
 }
 ffi.metatype(SophiaEnvHandle, SophiaEnvHandle_mt)
+--]=]
 
 local SophiaEnvironment = {}
 setmetatable(SophiaEnvironment, {
@@ -80,11 +102,15 @@ SophiaEnvironment.create = function(self, directory)
 
     directory = directory or "./db"
     
-    local envHandle = SophiaEnvHandle();
-    if not envHandle then
+    local rawHandle = sophia_ffi.sp_env();
+    if rawHandle == nil then
         return nil;
     end
 
+    local envHandle = SophiaHandle(rawHandle);
+    if not envHandle then
+        return nil;
+    end
 
     local rc = sophia_ffi.sp_ctl(envHandle.Handle, ffi.C.SPDIR, 
 	ffi.cast("int32_t",bor(ffi.C.SPO_CREAT,ffi.C.SPO_RDWR)), 
@@ -194,6 +220,69 @@ SophiaDatabase.delete = function(self, key, keysize)
    
     return true
 end
+
+-- Transactions
+SophiaDatabase.begin = function(self)
+    local rc = sophia_ffi.sp_begin(self:getNativeHandle());
+    
+    if rc == -1 then
+        return false, sophia_ffi.sp_error(self:getNativeHandle());
+    end
+   
+    return true
+end
+
+SophiaDatabase.commit = function(self)
+    local rc = sophia_ffi.commit(self:getNativeHandle());
+
+    if rc == -1 then
+        return false, sophia_ffi.sp_error(self:getNativeHandle());
+    end
+   
+    return true
+end
+
+SophiaDatabase.rollback = function(self)
+    local rc = sophia_ffi.rollback(self:getNativeHandle());
+
+    if rc == -1 then
+        return false, sophia_ffi.sp_error(self:getNativeHandle());
+    end
+   
+    return true
+end
+
+-- Cursors
+SophiaDatabase.iterate = function(self, key, keysize, sporder)
+    keysize = keysize or 0;
+    sporder = sporder or ffi.C.SPGTE;
+
+    -- BUGBUG, a cursor handle is leaked here
+    -- it needs to be wrapped up in a safe handle
+    local cursor = sophia_ffi.sp_cursor(self:getNativeHandle(), sporder, key, keysize);
+
+
+
+    local function closure()
+        if cursor == nil then
+            return nil;
+        end
+
+        local rc = sophia_ffi.sp_fetch(cursor)
+
+        -- a value of '0' indicates no more records
+        if rc == 0 then
+            return nil;
+        end
+
+        return sophia_ffi.sp_key(cursor), sophia_ffi.sp_keysize(cursor),
+            sophia_ffi.sp_value(cursor), sophia_ffi.sp_valuesize(cursor)
+    end
+
+    return closure;
+end
+
+
 
 
 return {

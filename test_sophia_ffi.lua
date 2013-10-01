@@ -2,6 +2,14 @@ local sophia = require("sophia")
 
 local ffi = require("ffi");
 
+ffi.cdef[[
+void free(void *);
+]]
+
+local function free(value)
+    return ffi.C.free(value);
+end
+
 local function strdup(str)
     local newstr = ffi.new("char[?]", #str+1);
     ffi.copy(newstr, ffi.cast("char *",str), #str);
@@ -48,7 +56,16 @@ while key < 10 do
     end
 
     print(string.format("key: %d, value: %s", key, ffi.string(value[0], valuesize[0])));
-    --ffi.C.free(value[0]);
+    ffi.C.free(value[0]);
     key= key + 1;
 end
+
+
+-- Database traversal
+for key, keysize, value, valuesize in db:iterate() do
+    print(ffi.cast("int *",key)[0]);
+    print(ffi.string(value, valuesize));
+end
+
+
 
