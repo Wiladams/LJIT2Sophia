@@ -1,11 +1,15 @@
 LJIT2Sophia
 ===========
 
+Overview
+--------
 LuaJIT FFI binding to the Sophia database: http://sphia.org
 
-The sophia database is a new (September, 2013) key value store
-which is small and embeddable.  A LuaJIT binding seems appropriate.
+The sophia database is a relatively new (September, 2013) key value store
+which is small and embeddable.  This LuaJIT binding seems appropriate.
 
+API Access
+----------
 The binding gives you access to the component at two distinct levels.
 If you want to use sophia in a style similar to what you would do
 using the 'C' language, then you can simply do this:
@@ -20,8 +24,9 @@ All of the functions are accessible through a simple table interface,
 which means you can export them to the global namespace if you like, 
 and make your code look even more like 'C' code.
 
-But, this is Lua, and the better way to access it is using more lua
-like semantics.
+Object Oriented Access
+----------------------
+This is Lua, and the better way to access sophia is using more lua like semantics and constructs.  An object model is presented, which makes it relatively easy to manipulate sophia databases.
 
 ```
 local sophia = require("sophia")
@@ -88,3 +93,14 @@ and if the key is a 'number', it can be converted to a 4 or 8 byte
 value.  this will make it a little bit convenient to work with these
 values without having to specify lengths explicitly.
 
+LICENSE
+-------
+This Software is licensed under the Microsoft Public License, which is a fairly straight forward open source license.
+
+http://opensource.org/licenses/ms-pl
+
+AUTHOR
+------
+William A Adams
+
+http://williamaadams.wordpress.com
