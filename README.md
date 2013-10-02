@@ -11,7 +11,9 @@ If you want to use sophia in a style similar to what you would do
 using the 'C' language, then you can simply do this:
 
 sophia_ffi = require("sophia_ffi");
+
 sophia_ffi.sp_env();
+
 sophia_ffi.sp_db(...);
 
 All of the functions are accessible through a simple table interface,
@@ -22,18 +24,25 @@ But, this is Lua, and the better way to access it is using more lua
 like semantics.
 
 local sophia = require("sophia")
+
 local db, err = sophia.SophiaDatabase("./db");
 
--- inserting a value
+inserting a value
+-----------------
 local success, err = db:set(keybuff, ffi.sizeof(keybuff), value, #str); 
 
--- retrieving a value
+retrieving a value
+------------------
 local success, err = db:get(keybuff, ffi.sizeof(keybuff), value, valuesize);
 
--- Using a cursor to iterate over the entire database
+Using a cursor to iterate over the entire database
+--------------------------------------------------
 for key, keysize, value, valuesize in db:iterate() do
+
     print(ffi.cast("int *",key)[0]);
+
     print(ffi.string(value, valuesize));
+
 end
 
 
@@ -48,7 +57,9 @@ SophiaDatabase internally, but for the most part is hidden.
 The Database:iterate() function has the following signature:
 
 SophiaDatabase.iterate = function(self, key, keysize, sporder)
+
     keysize = keysize or 0;
+
     sporder = sporder or ffi.C.SPGTE;
 
 In this way, by default, the iterator will iterate over the entire
