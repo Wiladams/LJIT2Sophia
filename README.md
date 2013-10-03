@@ -20,13 +20,13 @@ sophia_ffi.sp_env();
 sophia_ffi.sp_db(...);
 ```
 
-All of the functions are accessible through a simple table interface,
-which means you can export them to the global namespace if you like, 
-and make your code look even more like 'C' code.
+All of the functions are accessible through a simple table interface.  If you would like to promote them to the global namespace, then call: sophia_ffi.promoteToGlobal().  If you do this, you can write code that looks almost identical to 'C' code.
 
 Object Oriented Access
 ----------------------
 This is Lua, and the better way to access sophia is using more lua like semantics and constructs.  An object model is presented, which makes it relatively easy to manipulate sophia databases.
+
+To create and/or open a database, simply call the constructor on the SophiaDatabase object.  This will open up an existing database, or create it anew if it does not exist.
 
 ```
 local sophia = require("sophia")
@@ -35,19 +35,44 @@ local db, err = sophia.SophiaDatabase("./db");
 inserting a value
 -----------------
 
+Once you have a database object, there are two ways to get values into it.  The 'set()' method mimics the standard 'C' interface function, so you must pass all 4 parameters.
+
 ```
 local success, err = db:set(keybuff, ffi.sizeof(keybuff), value, #str); 
 ```
 
+The 'upsert()' method allows you to set a value using a simple key/value pair, which are assumed to be lua string objects.
+
+```
+local success, err = db:upsert(key, value)
+```
+
+For this upsert operation, if the value does not exist in the database, it will be added.  If the key already exists, then the value for that key will be changed to the value being presented.
+
 retrieving a value
 ------------------
+
+There are two ways to retrieve a value from the database.  The first mimics the standard 'C' interface function, and requires 4 parameters.
 
 ```
 local success, err = db:get(keybuff, ffi.sizeof(keybuff), value, valuesize);
 ```
 
+The second mechnism allows you to specify a single parameter, which is the key associated with the value you want to retrieve.  A second 'keysize' parameter is allowed, but if it is not supplied, the #key length will be used.
+
+
+```
+local value, err = db:retrieve(key, keysize)
+```
+
+Upon completion, the 'value' will contain the value specified by the key.  Otherwise, it will return false, and the associated error.
+
+
+
 Using a cursor to iterate over the entire database
 --------------------------------------------------
+
+In addition to retrieving single values at a time, you can iterate over a range of values in the database.
 
 ```
 for key, keysize, value, valuesize in db:iterate() do

@@ -83,7 +83,7 @@ typedef struct {
 ]]
 
 
-return {
+local exports = {
     sp_env = Lib.sp_env,
     sp_open = Lib.sp_open,
     sp_ctl = Lib.sp_ctl,
@@ -117,3 +117,39 @@ return {
     sp_stat = Lib.sp_stat,
 }
 
+
+--[[
+    Make functions accessible through global namespace
+--]]
+
+exports.promoteToGlobal = function()
+    sp_env = exports.sp_env;
+    sp_open = exports.sp_open;
+    sp_ctl = exports.sp_ctl;
+    sp_destroy = exports.sp_destroy;
+    
+    -- Operations
+    sp_set = exports.sp_set;
+    sp_delete = exports.sp_delete;
+    sp_get = exports.sp_get;
+
+    -- Transactions
+    sp_begin = exports.sp_begin;
+    sp_commit = exports.sp_commit;
+    sp_rollback = exports.sp_rollback;
+
+    -- Cursors
+    sp_cursor = exports.sp_cursor;
+    sp_fetch = exports.sp_fetch;
+    sp_key = exports.sp_key;
+    sp_keysize = exports.sp_keysize;
+    sp_value = exports.sp_value;
+    sp_valuesize = exports.sp_valuesize;
+
+    -- Error handling and meta information
+    sp_error = exports.sp_error;
+
+    sp_stat = exports.sp_stat;
+end
+
+return exports
