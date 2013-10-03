@@ -17,6 +17,7 @@ local SophiaHandle_mt = {
     end,
 
     __gc = function(self)
+        --print("GC SophiaHandle: ", self.Handle)
         if self.Handle == nil then
             return ;
         end
@@ -25,57 +26,17 @@ local SophiaHandle_mt = {
 
         self.Handle = nil;
     end,
+
+    __index = {
+        free = function(self)
+            sophia_ffi.sp_destroy(self.Handle);
+            self.Handle = nil;
+        end,
+    },
 }
 ffi.metatype(SophiaHandle, SophiaHandle_mt);
 
 
-
-ffi.cdef[[
-typedef struct {
-    void * Handle;
-} SophiaDBHandle;
-]]
-local SophiaDBHandle = ffi.typeof("SophiaDBHandle");
-local SophiaDBHandle_mt = {
-    __new = function(ct, rawHandle)
-        print("SophiaDBHandle.__new(): ", rawHandle);
-        return ffi.new(ct, rawHandle);
-    end,
-
-    __gc = function(self)
-        if self.Handle == nil then
-            return ;
-        end
-
-        sophia_ffi.sp_destroy(self.Handle);
-
-        self.Handle = nil;
-    end,
-}
-ffi.metatype(SophiaDBHandle, SophiaDBHandle_mt);
---[=[
-ffi.cdef[[
-typedef struct {
-    void * Handle;
-} SophiaEnvHandle;
-]]
--- Safe Handle for sophia environment type
-local SophiaEnvHandle = ffi.typeof("SophiaEnvHandle");
-local SophiaEnvHandle_mt = {
-    __gc = function(self)
-	if self.Handle ~= nil then
-            sophia_ffi.sp_destroy(self.Handle);
-        end
-        self.Handle = nil;
-    end,
-
-    __new = function(ct, rawHandle)
-
-	return ffi.new(ct, rawHandle);
-    end,
-}
-ffi.metatype(SophiaEnvHandle, SophiaEnvHandle_mt)
---]=]
 
 local SophiaEnvironment = {}
 setmetatable(SophiaEnvironment, {
@@ -136,7 +97,7 @@ SophiaEnvironment.open = function(self)
         return nil, sophia_ffi.sp_error(self:getNativeHandle());
     end
     
-    return SophiaDBHandle(dbhandle);
+    return SophiaHandle(dbhandle);
 end
 
 
@@ -201,8 +162,34 @@ SophiaDatabase.set = function(self, key, keysize, value, valuesize)
     return true
 end
 
+SophiaDatabase.upsert = function(self, ...)
+    local nargs = select('#',...)
+    -- if it's 4 values, then they MUST be
+    -- key, keysize, value, valuesize
+    -- if it's two values, then they MUST be
+    -- key, value
+
+    local key, keysize, value, valuesize
+
+    if nargs == 4 then
+        key = select(1, ...)
+        keysize = select(2, ...)
+        value = select(3, ...)
+        valuesize = select(4, ...)
+    elseif nargs == 2 then
+        key = select(1, ...)
+        keysize = #key
+        value = select(2, ...)
+        valuesize = #value
+    else
+        return false, "invalid number of arguments"
+    end
+
+    return self:set(key, keysize, value, valuesize);
+end
+
+
 SophiaDatabase.get = function(self, key, keysize, value, valuesize)
-    --print(key, keysize, value, valuesize);
     local rc = sophia_ffi.sp_get(self:getNativeHandle(), key, keysize, value, valuesize);
 
     if rc == -1 then
@@ -212,7 +199,42 @@ SophiaDatabase.get = function(self, key, keysize, value, valuesize)
     return true
 end
 
+SophiaDatabase.retrieve = function(self, ...)
+    local nargs = select('#',...)
+
+    -- if it's 4 values, then they MUST be
+    -- key, keysize, value, valuesize
+    -- if it's two values, then they MUST be
+    -- key, value
+    local key, keysize, value, valuesize
+    if nargs == 4 then
+        key = select(1, ...)
+        keysize = select(2, ...)
+        value = select(3, ...)
+        valuesize = select(4, ...)
+    elseif nargs == 1 then
+        key = select(1, ...)
+        keysize = #key
+        value = ffi.new("void *[1]");
+        valuesize = ffi.new("size_t[1]");
+    else
+        return false, "invalid number of arguments"
+    end
+
+    local success, err = self:get(key, keysize, value, valuesize);
+    if not success then
+        return false, err
+    end
+
+    local str = ffi.string(value[0], valuesize[0])
+    ffi.C.free(value[0]);
+    
+    return str
+end
+
 SophiaDatabase.delete = function(self, key, keysize)
+    keysize = keysize or #key
+
     local rc = sophia_ffi.sp_delete(self:getNativeHandle(), key, keysize);
     if rc == -1 then
         return false, sophia_ffi.sp_error(self:getNativeHandle());
@@ -253,30 +275,29 @@ SophiaDatabase.rollback = function(self)
 end
 
 -- Cursors
-SophiaDatabase.iterate = function(self, key, keysize, sporder)
+SophiaDatabase.iteration = function(self, key, keysize, sporder)
     keysize = keysize or 0;
     sporder = sporder or ffi.C.SPGTE;
 
-    -- BUGBUG, a cursor handle is leaked here
-    -- it needs to be wrapped up in a safe handle
-    local cursor = sophia_ffi.sp_cursor(self:getNativeHandle(), sporder, key, keysize);
+    local cHandle = SophiaHandle(sophia_ffi.sp_cursor(self:getNativeHandle(), sporder, key, keysize));
 
-
+    print("cursor HANDLE: ", cHandle.Handle);
 
     local function closure()
-        if cursor == nil then
+        if cHandle.Handle == nil then
             return nil;
         end
 
-        local rc = sophia_ffi.sp_fetch(cursor)
-
+        local rc = sophia_ffi.sp_fetch(cHandle.Handle)
         -- a value of '0' indicates no more records
         if rc == 0 then
+            cHandle:free();
+            --collectgarbage();
             return nil;
         end
 
-        return sophia_ffi.sp_key(cursor), sophia_ffi.sp_keysize(cursor),
-            sophia_ffi.sp_value(cursor), sophia_ffi.sp_valuesize(cursor)
+        return sophia_ffi.sp_key(cHandle.Handle), sophia_ffi.sp_keysize(cHandle.Handle),
+            sophia_ffi.sp_value(cHandle.Handle), sophia_ffi.sp_valuesize(cHandle.Handle)
     end
 
     return closure;
@@ -286,7 +307,6 @@ end
 
 
 return {
-    SophiaEnvironment = SophiaEnvironment,
     SophiaDatabase = SophiaDatabase,
 }
 

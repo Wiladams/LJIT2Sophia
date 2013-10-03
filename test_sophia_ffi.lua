@@ -30,11 +30,10 @@ end
 local str = "hello world"
 local value = strdup(str);
 local key = 0;
-local keybuff = ffi.new("int[1]",key);
 
 while key < 10 do
-    keybuff[0] = key
-    local success, err = db:set(keybuff, ffi.sizeof(keybuff), value, #str); 
+    local success, err = db:upsert(tostring(key), str);
+
     if not success then
         print("db:set(), ERROR: ", key, err);
     end
@@ -42,14 +41,14 @@ while key < 10 do
     key = key + 1;
 end
 
--- Retrieve values from database
+-- Retrieve values from database using raw calls
+print("== GET ==")
 key = 0;
 while key < 10 do
-    keybuff[0] = key
+    local keystr = tostring(key);
     local value = ffi.new("void *[1]");
     local valuesize = ffi.new("size_t[1]");
-    local success, err = db:get(keybuff, ffi.sizeof(keybuff), value, valuesize);
-    
+    local success, err = db:get(keystr, #keystr, value, valuesize);
     if not success then
         print("sp_get ERROR: ", err);
         break;
@@ -60,12 +59,26 @@ while key < 10 do
     key= key + 1;
 end
 
+-- Retrieve values from database using cooked calls
+print("== RETRIEVE ==")
+key = 0;
+while key < 10 do
+    local value, err = db:retrieve(tostring(key))
+    if not value then
+        print("sp_get ERROR: ", err);
+        break;
+    end
 
--- Database traversal
-for key, keysize, value, valuesize in db:iterate() do
-    print(ffi.cast("int *",key)[0]);
-    print(ffi.string(value, valuesize));
+    print(string.format("key: %d, value: %s", key, value));
+    key= key + 1;
 end
 
+
+-- Retrieve values using cursor
+print("== ITERATE ==")
+local ikey = tostring(5);
+for key, keysize, value, valuesize in db:iteration(ikey, #ikey, ffi.C.SPGT) do
+    print(ffi.cast("int *",key)[0], ffi.string(value, valuesize));
+end
 
 
