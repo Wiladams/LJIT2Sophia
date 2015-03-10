@@ -83,7 +83,8 @@ void *	sp_type(void *, ...);
 -- the strings have their intended values.
 local config = {
     sophia = {
-        version = ffi.cast("const char *", "sophia.version");		-- string, read-only
+--        version = ffi.cast("const char *", "sophia.version");		-- string, read-only
+        version = "sophia.version";		-- string, read-only
 	build = "sophia.build";			-- string, read-only
 	["error"] = "sophia.error";		-- string
 	path = "sophia.path";			-- string, mandatory
@@ -221,7 +222,8 @@ exports.promoteToGlobal = function()
     sp_open = exports.sp_open;
     sp_ctl = exports.sp_ctl;
     sp_destroy = exports.sp_destroy;
-    
+    sp_object = exports.sp_object;
+
     -- Operations
     sp_set = exports.sp_set;
     sp_delete = exports.sp_delete;
