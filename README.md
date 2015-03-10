@@ -3,10 +3,21 @@ LJIT2Sophia
 
 Overview
 --------
-LuaJIT FFI binding to the Sophia database: http://sphia.org
+LuaJIT FFI binding to the Sophia (1.1) database: http://sphia.org
+
 
 The sophia database is a relatively new (September, 2013) key value store
 which is small and embeddable.  This LuaJIT binding seems appropriate.
+
+The Sophia API has changed dramatically since the 1.1 version.  The 1.1
+compatible version of this LuaJIT binding will be saved off as a 'release'
+and no further work will be done on it.
+
+A 1.2 version of the binding is in the works, so the files currently checked
+in represent that work in progress.
+
+All the documentation below corresponds to the 1.1 version of the API.  Some
+or all of it might change for the 1.2 binding.
 
 API Access
 ----------
@@ -127,5 +138,5 @@ http://opensource.org/licenses/ms-pl
 AUTHOR
 ------
 William A Adams
-
 http://williamaadams.wordpress.com
+
