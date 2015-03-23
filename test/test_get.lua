@@ -1,10 +1,7 @@
 local ffi = require("ffi");
 
-local sophia_ffi = require("sophia_ffi")
-sophia_ffi.promoteToGlobal();
+local sophia_ffi = require("test_common")
 local config = sophia_ffi.config;
-
-require("test_common");
 
 local env = sp_env();
 local ctl = sp_ctl(env);
@@ -13,8 +10,10 @@ sp_set(ctl, config.sophia.path, "./storage");
 sp_set(ctl, "db", "test");
 
 local rc = sp_open(env);
-
 assert(rc ~= -1, "error on sp_open");
+
+local db = sp_get(ctl, "db.test");
+
 
 key = "hello";
 value = "world";

@@ -83,7 +83,6 @@ void *	sp_type(void *, ...);
 -- the strings have their intended values.
 local config = {
     sophia = {
---        version = ffi.cast("const char *", "sophia.version");		-- string, read-only
         version = "sophia.version";		-- string, read-only
 	build = "sophia.build";			-- string, read-only
 	["error"] = "sophia.error";		-- string
@@ -232,7 +231,6 @@ exports.promoteToGlobal = function()
     -- Transactions
     sp_begin = exports.sp_begin;
     sp_commit = exports.sp_commit;
-    --sp_rollback = exports.sp_rollback;
 
     -- Cursors
     sp_cursor = exports.sp_cursor;

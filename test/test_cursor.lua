@@ -1,0 +1,58 @@
+local ffi = require("ffi");
+
+local sophia_ffi = require("sophia_ffi")
+sophia_ffi.promoteToGlobal();
+local config = sophia_ffi.config;
+
+require("test_common");
+
+local env = sp_env();
+local ctl = sp_ctl(env);
+
+sp_set(ctl, config.sophia.path, "./storage");
+sp_set(ctl, "db", "test");
+sp_set(ctl, "db.test.index.cmp", "u32");
+
+local rc = sp_open(env);
+
+assert(rc ~= -1, "error on sp_open");
+
+local db = sp_get(ctl, "db.test");
+print("DB: ", db);
+
+-- insert some keys
+local key = ffi.new("uint32_t[1]",0);
+while (key[0] < 10) do
+	local o = sp_object(db);
+	rc = sp_set(o, "key", key, 4);
+
+	print("SET KEY: ", key[0], rc);
+
+	rc = sp_set(db, o);
+
+	assert( rc ~= -1, "sp_set() error");
+
+	key[0] = key[0] + 1;
+end
+
+-- create cursor to iterate in >= order (default)
+local obj = sp_object(db);
+sp_set(obj, "order", ">=");	-- >, >=, <, <=
+local cursor = sp_cursor(db, obj);
+
+assert(cursor ~= nil, "cursor == nil");
+
+local o = nil;
+
+repeat
+	o = sp_get(cursor);
+	print("sp_get(cursor)", o);
+	if (o ~= nil) then
+		print(sp_get(o, "key", nil));
+	end
+until o == nil;
+
+sp_destroy(cursor);
+
+sp_destroy(env);
+

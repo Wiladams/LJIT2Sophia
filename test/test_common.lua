@@ -1,3 +1,5 @@
+package.path = package.path .. ";../?.lua"
+
 local ffi = require("ffi");
 
 local sophia = require("sophia_ffi")
@@ -20,4 +22,6 @@ function strdup(str)
     newstr[#str] = 0;
     return newstr;
 end
+
+return sophia
 
