@@ -2,10 +2,7 @@ package.path = package.path..";../?.lua"
 
 local ffi = require("ffi");
 
-local sophia = require("sophia_ffi")
-sophia.promoteToGlobal();
-
-
+local sophia = require("sophia_ffi")()
 
 
 ffi.cdef[[
