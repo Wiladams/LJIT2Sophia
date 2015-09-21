@@ -3,17 +3,9 @@ local bit = require("bit");
 local bor = bit.bor;
 
 local Lib_sophia = require("sophia_ffi")
+local libc = require("libc")
 
 
--- Error handling and meta information
-local function strerror(thing)
-    local err = Lib_sophia.sp_error(thing)
-    if err ~= nil then
-            return ffi.string(err);
-    end
-
-    return string.format("UNKNOWN ERROR [%s]", tostring(thing))
-end
 
 -- Configuration string values
 -- These are used in conjunction with the sp_get() function
@@ -107,6 +99,22 @@ local config = {
     };
 }
 
+-- Error handling and meta information
+
+local function sp_strerror(env)
+    local size = ffi.new("int[1]")
+    local errstr = Lib_sophia.sp_getstring(env, config.sophia.error, size)
+    if errstr == nil then
+        return "UNKNOWN ERROR";
+    end
+
+    errstr = ffi.string(errstr, size[0])
+    ffi.C.free(errstr);
+
+    return errstr;
+end
+
+
 local exports = {
     -- reference to lib so it doesn't get
     -- garbage collected
@@ -139,7 +147,7 @@ local exports = {
     sp_commit = Lib_sophia.sp_commit;
 
     -- local functions
-    sp_strerror = strerror;
+    sp_strerror = sp_strerror;
 
     -- Configuration strings
     config = config;
@@ -151,11 +159,10 @@ local exports = {
     Make functions accessible through global namespace
 --]]
 setmetatable(exports, {
-
     __call = function(self, tbl)
         tbl = tbl or _G;
-        for k,v in pairs(exports) do
-            _G[k] = v;
+        for k,v in pairs(self) do
+            tbl[k] = v;
         end
 
         return self;

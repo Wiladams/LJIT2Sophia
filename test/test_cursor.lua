@@ -6,23 +6,20 @@ local config = sophia_ffi.config;
 
 require("test_common");
 
-local env = sp_env();
-local ctl = sp_ctl(env);
+local function main()
+	local env = sp_env();
 
-sp_set(ctl, config.sophia.path, "./storage");
-sp_set(ctl, "db", "test");
-sp_set(ctl, "db.test.index.cmp", "u32");
+	-- open or create environment and database
+	local env = sp_env();
+	sp_setstring(env, config.sophia.path, "_test", 0);
+	sp_setstring(env, "db", "test", 0);
+	local db = sp_getobject(env, "db.test");
+	local rc = sp_open(env);
+	assert(rc ~= -1, "error on sp_open");
 
-local rc = sp_open(env);
-
-assert(rc ~= -1, "error on sp_open");
-
-local db = sp_get(ctl, "db.test");
-print("DB: ", db);
-
--- insert some keys
-local key = ffi.new("uint32_t[1]",0);
-while (key[0] < 10) do
+	-- insert some keys
+	local key = ffi.new("uint32_t[1]",0);
+	while (key[0] < 10) do
 	local o = sp_object(db);
 	rc = sp_set(o, "key", key, 4);
 
