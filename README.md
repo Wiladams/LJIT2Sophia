@@ -3,7 +3,7 @@ LJIT2Sophia
 
 Overview
 --------
-LuaJIT FFI binding to the Sophia (1.1) database: http://sphia.org
+LuaJIT FFI binding to the Sophia (1.1) database: https://github.com/pmwkaa/sophia
 
 
 The sophia database is a relatively new (September, 2013) key value store
